@@ -42,7 +42,6 @@ from __future__ import annotations
 
 import json
 import os
-from collections import Counter
 from datetime import datetime, timezone
 from typing import Annotated, Any, Dict, List
 
@@ -103,29 +102,28 @@ def fetch_notion_leads(
                 }
             )
 
-        # Compute the summary the model would otherwise have to compute itself.
-        workshop_counts = Counter(
-            (r.get("workshop") or "Not sure yet") for r in rows
-        )
-        top_workshop, top_count = (
-            workshop_counts.most_common(1)[0] if workshop_counts else ("Not sure yet", 0)
-        )
-        opt_in_count = sum(1 for r in rows if r.get("opt_in"))
-
         db_title = store.database_title()
-        source_label = "local starter data" if store.is_local() else "Notion"
+        source_label = "datos locales demo" if store.is_local() else "Notion"
+
+        names = [r.get("name") or "?" for r in rows[:8]]
+        names_preview = ", ".join(names)
+        all_vax: list[str] = []
+        for r in rows:
+            for t in r.get("tools") or []:
+                if t and t not in all_vax:
+                    all_vax.append(t)
 
         summary = (
-            f"Imported {len(rows)} leads from {source_label}. "
-            f"Top demand: {top_workshop} ({top_count} signups). "
-            f"Opt-in: {opt_in_count}/{len(rows)}."
+            f"Importé {len(rows)} perfil(es) de mascota desde {source_label} "
+            f"({db_title}). Mascotas: {names_preview}. "
+            f"Vacunas/registros en etiquetas: {', '.join(all_vax) if all_vax else 'ninguna listada'}."
         )
 
         update: dict[str, Any] = {
             "leads": rows,
             "header": {
-                "title": "Workshop Lead Triage",
-                "subtitle": f"{len(rows)} leads from {source_label} · top demand: {top_workshop}",
+                "title": "PawMind",
+                "subtitle": f"{len(rows)} perfil(es) · {db_title} · {source_label}",
             },
             "sync": {
                 # `databaseId` stays Notion-flavored on Notion, blank on

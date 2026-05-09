@@ -15,7 +15,7 @@ export function applyFilter(leads: Lead[], f: LeadFilter): Lead[] {
     if (f.opt_in === "yes" && !l.opt_in) return false;
     if (f.opt_in === "no" && l.opt_in) return false;
     if (search.length) {
-      const blob = `${l.name} ${l.company} ${l.email} ${l.role} ${l.message}`
+      const blob = `${l.name} ${l.company} ${l.email} ${l.role} ${l.message} ${l.workshop} ${l.submitted_at} ${l.tools.join(" ")}`
         .toLowerCase();
       if (!blob.includes(search)) return false;
     }

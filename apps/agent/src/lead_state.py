@@ -151,17 +151,8 @@ class LeadStateMiddleware(AgentMiddleware[LeadCanvasState, Any]):  # type: ignor
         if not rows:
             return None
 
-        from collections import Counter
-
-        workshop_counts = Counter(
-            (r.get("workshop") or "Not sure yet") for r in rows
-        )
-        top_workshop, _ = (
-            workshop_counts.most_common(1)[0]
-            if workshop_counts
-            else ("Not sure yet", 0)
-        )
-        source_label = "local starter data" if store.is_local() else "Notion"
+        db_title = store.database_title()
+        source_label = "datos locales demo" if store.is_local() else "Notion"
         db_id = (
             os.getenv("NOTION_LEADS_DATABASE_ID", "")
             or ("local" if store.is_local() else "")
@@ -170,10 +161,9 @@ class LeadStateMiddleware(AgentMiddleware[LeadCanvasState, Any]):  # type: ignor
         return {
             "leads": rows,
             "header": {
-                "title": "Workshop Lead Triage",
+                "title": "PawMind",
                 "subtitle": (
-                    f"{len(rows)} leads from {source_label} · "
-                    f"top demand: {top_workshop}"
+                    f"{len(rows)} perfil(es) · {db_title} · {source_label}"
                 ),
             },
             "sync": {

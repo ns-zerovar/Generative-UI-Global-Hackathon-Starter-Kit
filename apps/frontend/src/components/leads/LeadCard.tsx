@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Mail, ExternalLink, Check } from "lucide-react";
+import { Mail, ExternalLink, Check, FileText } from "lucide-react";
 import type { Lead } from "@/lib/leads/types";
 import {
   initials,
@@ -38,6 +38,7 @@ export function LeadCard({
   syncing,
   justSynced,
 }: LeadCardProps) {
+  const isPetProfile = !lead.email?.trim();
   const pulsing = usePulse(lead.id, highlightedLeadIds ?? []);
   const ring = selected
     ? "ring-2 ring-[#BEC2FF]"
@@ -70,7 +71,11 @@ export function LeadCard({
           </div>
           <div className="truncate text-xs text-muted-foreground">
             {lead.role}
-            {lead.company ? ` @ ${lead.company}` : null}
+            {lead.company
+              ? isPetProfile
+                ? ` · ${lead.company}`
+                : ` @ ${lead.company}`
+              : null}
           </div>
         </div>
       </div>
@@ -90,7 +95,9 @@ export function LeadCard({
                 lead.technical_level,
               )}`}
             >
-              {lead.technical_level}
+              {isPetProfile
+                ? `Edad: ${lead.technical_level}`
+                : lead.technical_level}
             </span>
           </div>
 
@@ -104,6 +111,7 @@ export function LeadCard({
                       ? "ring-1 ring-[#BEC2FF]/60 text-foreground"
                       : ""
                   }`}
+                  title={isPetProfile ? "Vacunas / registros" : undefined}
                 >
                   {t}
                 </span>
@@ -117,11 +125,30 @@ export function LeadCard({
           ) : null}
 
           <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1 truncate">
-              <Mail className="size-3 shrink-0" />
-              <span className="truncate">{lead.email}</span>
-            </span>
-            {lead.opt_in ? (
+            {isPetProfile ? (
+              <span className="inline-flex min-w-0 flex-1 items-start gap-1">
+                <FileText className="mt-0.5 size-3 shrink-0" />
+                <span className="line-clamp-2 leading-snug">
+                  {lead.message?.trim()
+                    ? lead.message
+                    : "Sin texto en Historial"}
+                </span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 truncate">
+                <Mail className="size-3 shrink-0" />
+                <span className="truncate">{lead.email}</span>
+              </span>
+            )}
+            {isPetProfile ? (
+              lead.submitted_at ? (
+                <span className="shrink-0 tabular-nums text-[10px]">
+                  rev. {lead.submitted_at.slice(0, 10)}
+                </span>
+              ) : (
+                <span className="text-muted-foreground/70">—</span>
+              )
+            ) : lead.opt_in ? (
               <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                 <Check className="size-3" />
                 opt-in

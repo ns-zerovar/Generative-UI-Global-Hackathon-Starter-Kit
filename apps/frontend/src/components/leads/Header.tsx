@@ -33,7 +33,7 @@ export function Header({
           {visibleLeads !== totalLeads ? (
             <span className="text-muted-foreground"> / {totalLeads}</span>
           ) : null}{" "}
-          leads
+          registros
         </span>
         {sync.databaseTitle ? (
           <span className="inline-flex items-center gap-1.5">

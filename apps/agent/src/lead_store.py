@@ -108,9 +108,9 @@ class NotionStore:
             title = "".join(
                 p.get("plain_text", "") for p in title_parts if isinstance(p, dict)
             )
-            return title or "AI Workshop Provider Community"
+            return title or "Pet-App DB"
         except Exception:  # noqa: BLE001 — banner string is best-effort
-            return "AI Workshop Provider Community"
+            return "Pet-App DB"
 
     def is_local(self) -> bool:
         return False

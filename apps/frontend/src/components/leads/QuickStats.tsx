@@ -25,49 +25,44 @@ export function QuickStats({ leads }: QuickStatsProps) {
   const tiles = useMemo<Tile[]>(() => {
     const total = leads.length;
 
-    const optIns = leads.filter((l) => l.opt_in).length;
-    const optInPct = total === 0 ? 0 : Math.round((optIns / total) * 100);
-
-    const workshopCounts = new Map<string, number>();
+    const vaccineTags = new Set<string>();
     for (const l of leads) {
-      const w = l.workshop || "Not sure yet";
-      workshopCounts.set(w, (workshopCounts.get(w) ?? 0) + 1);
-    }
-    let topWorkshop: { name: string; count: number } | null = null;
-    for (const [name, count] of workshopCounts) {
-      if (!topWorkshop || count > topWorkshop.count) {
-        topWorkshop = { name, count };
+      for (const t of l.tools ?? []) {
+        if (t) vaccineTags.add(t);
       }
     }
 
-    const developers = leads.filter((l) => {
-      const t = l.technical_level;
-      return t === "Developer" || t === "Advanced / expert";
-    }).length;
+    const withHistorial = leads.filter((l) => l.message?.trim()).length;
+
+    let latestRev = "";
+    for (const l of leads) {
+      const d = l.submitted_at?.trim();
+      if (d && (!latestRev || d > latestRev)) latestRev = d;
+    }
 
     return [
       {
-        label: "total leads",
+        label: "perfiles",
         value: total.toString(),
-        meta: total === 1 ? "lead in canvas" : "leads in canvas",
+        meta: total === 1 ? "mascota en canvas" : "mascotas en canvas",
         accent: "lilac",
       },
       {
-        label: "opt-in",
-        value: `${optInPct}%`,
-        meta: `${optIns} / ${total}`,
+        label: "vacunas (tags)",
+        value: vaccineTags.size.toString(),
+        meta: "etiquetas distintas",
         accent: "mint",
       },
       {
-        label: "top workshop",
-        value: topWorkshop?.name ?? "—",
-        meta: topWorkshop ? `${topWorkshop.count} interested` : "no leads yet",
+        label: "con historial",
+        value: withHistorial.toString(),
+        meta: "notas / Historial",
         accent: "blue",
       },
       {
-        label: "developers",
-        value: developers.toString(),
-        meta: total === 0 ? "—" : `${Math.round((developers / total) * 100)}% of canvas`,
+        label: "última rev.",
+        value: latestRev ? latestRev.slice(0, 10) : "—",
+        meta: latestRev ? "más reciente en datos" : "sin fecha",
         accent: "orange",
       },
     ];

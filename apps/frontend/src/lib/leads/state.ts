@@ -14,8 +14,8 @@ export const initialState: AgentState = {
   highlightedLeadIds: [],
   selectedLeadId: null,
   header: {
-    title: "Workshop Lead Triage",
-    subtitle: "Live from Notion",
+    title: "PawMind",
+    subtitle: "Perfiles de mascotas desde Notion",
   },
   sync: { databaseId: "", databaseTitle: "", syncedAt: null },
 };

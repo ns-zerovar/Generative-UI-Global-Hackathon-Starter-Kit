@@ -122,21 +122,23 @@ function CanvasInner() {
     available: "before-first-message",
     suggestions: [
       {
-        title: "Import from Notion",
-        message: "Import the leads from Notion.",
+        title: "Importar desde Notion",
+        message: "Importa los perfiles desde Notion.",
       },
       {
-        title: "What's hot?",
-        message: "What workshops are most in demand right now?",
-      },
-      {
-        title: "Highlight developers",
+        title: "Vacunas y revisiones",
         message:
-          "Highlight every lead with technical_level Developer or Advanced / expert.",
+          "¿Qué vacunas aparecen en los datos y cuándo fue la última revisión?",
       },
       {
-        title: "Profile a lead",
-        message: "Tell me about Ada Lovelace and show her mini card.",
+        title: "Historial clínico",
+        message:
+          "Resume el Historial de cada mascota y si hay riesgo ortopédico mencionado.",
+      },
+      {
+        title: "Síntomas",
+        message:
+          "¿Podría estar relacionado el historial con cojera o displasia de cadera?",
       },
     ],
   });
@@ -616,11 +618,11 @@ function CanvasInner() {
         {state.leads.length === 0 ? (
           <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
             <p className="max-w-md text-sm text-muted-foreground">
-              Ask the assistant to{" "}
+              Pide al asistente que{" "}
               <span className="font-mono text-foreground">
-                pull workshop signups from Notion
+                importe los perfiles desde Notion
               </span>{" "}
-              to populate the canvas.
+              para cargar PawMind en el lienzo.
             </p>
           </div>
         ) : (

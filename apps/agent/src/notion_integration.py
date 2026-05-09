@@ -1,33 +1,26 @@
-"""Notion helpers for MCP-Use-backed agent tools (lead-form usecase).
+"""Notion helpers for MCP-Use-backed agent tools.
 
-Exposes:
-- `get_database_schema`  — pull the Lead data-source's property schema so the
-  agent can populate select / multi-select options on canvas entities.
-- `fetch_leads`          — read all rows of the Leads database (paginated)
-  and return a list of normalized lead dicts.
-- `health_check`         — confirm the Notion MCP server is reachable and
-  the source schema still has the properties the canvas expects.
+Primary schema (**Pet-App DB** — PawMind): one row per dog / pet profile.
+Notion columns (Spanish):
+  Nombre (title), Raza (select), Edad (number), Vacunas (multi_select),
+  Última Rev. (date), Historial (rich_text).
 
-All three are used by the LangChain backend tools in `notion_tools.py`.
-The MCP server is `npx @notionhq/notion-mcp-server` (Notion's official),
-auth via `NOTION_TOKEN`. See `notion_mcp.py` for the spawn pattern.
+Rows normalize into the kit's shared **Lead** JSON shape so the React canvas
+and LangGraph tools stay unchanged:
+  name←Nombre, role←Raza, company←Edad display (e.g. \"3 años\"),
+  tools←Vacunas, message←Historial, submitted_at←Última Rev.,
+  workshop←human-readable last-review label for cards.
 
-Schema this code maps against (the live database is "AI Workshop Provider
-Community"; field names below match Notion exactly):
-  Full name (title), Company (rich_text), Email (email), Role (rich_text),
-  Phone (phone_number), Source (select), How technical are you? (select),
-  Interested in (multi_select), What tools do you use? (multi_select),
-  What workshop would you like to join next? (select),
-  Opt-in to updates (checkbox), Message (rich_text),
-  Submitted at (created_time).
+Legacy **workshop signup** databases are still supported when the page has
+\"Full name\" (and no Pet-App \"Nombre\") — see `_row_workshop`.
 
-If your Notion database has a different schema, normalize the property
-accessors at the bottom of this file.
+The MCP server is `npx @notionhq/notion-mcp-server`, auth via `NOTION_TOKEN`.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Dict, List, Optional, TypedDict
 
 from dotenv import load_dotenv
@@ -49,25 +42,23 @@ from .notion_mcp import (
 load_dotenv()
 
 
-# Notion property names the `_read_*` accessors below expect to find. Used
-# for the schema diff in `health_check` so a renamed column shows up as a
-# missing property rather than a silent zero-value field.
+# Pet-App DB — columns expected for PawMind / health_check.
 EXPECTED_PROPS: List[str] = [
-    "Full name",
-    "Company",
-    "Email",
-    "Role",
-    "Phone",
-    "Source",
-    "How technical are you?",
-    "Interested in",
-    "What tools do you use?",
-    "What workshop would you like to join next?",
-    "Status",
-    "Opt-in to updates",
-    "Message",
-    "Submitted at",
+    "Nombre",
+    "Raza",
+    "Edad",
+    "Vacunas",
+    "Última Rev.",
+    "Historial",
 ]
+
+# Exact Notion title for the last-review date column (try variants on read).
+ULTIMA_REV_KEYS: tuple[str, ...] = (
+    "Última Rev.",
+    "Última Rev",
+    "Ultima Rev.",
+    "Ultima Rev",
+)
 
 
 # Module-level dedupe set so a renamed Notion column logs once per process.
@@ -136,15 +127,10 @@ def get_database_schema(database_id: str) -> Optional[Dict[str, Any]]:
 
 
 def fetch_leads(database_id: str) -> Optional[List[Dict[str, Any]]]:
-    """Fetch all rows from a Notion Leads database as normalized dicts.
+    """Fetch all rows from the configured Notion database as normalized Lead dicts.
 
-    Pages through Notion's cursor-based query (`start_cursor` / `has_more`)
-    until exhausted. Each row is shaped roughly as:
-      { "id": <page_id>, "url": <page_url>,
-        "name": str, "company": str, "email": str, "role": str, "phone": str,
-        "source": str | "", "technical_level": str | "",
-        "interested_in": list[str], "tools": list[str], "workshop": str | "",
-        "opt_in": bool, "message": str, "submitted_at": str | "" }
+    Pet-App DB rows map to PawMind fields (Nombre→name, Historial→message, …).
+    Legacy workshop databases still normalize via `_row_workshop`.
 
     Returns `None` on configuration / API failure.
     """
@@ -181,8 +167,81 @@ def fetch_leads(database_id: str) -> Optional[List[Dict[str, Any]]]:
         return None
 
 
-def _row_from_props(page: Dict[str, Any], props: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize a Notion page + props dict into the Lead shape."""
+def _is_pet_schema(props: Dict[str, Any]) -> bool:
+    keys = props.keys()
+    if "Nombre" in keys:
+        return True
+    if "Historial" in keys and "Full name" not in keys:
+        return True
+    return False
+
+
+def _read_date(props: Dict[str, Any], key: str) -> str:
+    prop = props.get(key)
+    if not prop:
+        return ""
+    dt = prop.get("date") or {}
+    return str(dt.get("start") or "")
+
+
+def _read_date_flexible(props: Dict[str, Any], keys: tuple[str, ...]) -> str:
+    for key in keys:
+        if props.get(key):
+            v = _read_date(props, key)
+            if v:
+                return v
+    return ""
+
+
+def _read_number(props: Dict[str, Any], key: str) -> str:
+    prop = props.get(key)
+    if not prop:
+        return ""
+    n = prop.get("number")
+    if n is None:
+        return ""
+    if isinstance(n, float) and n.is_integer():
+        return str(int(n))
+    if isinstance(n, int):
+        return str(n)
+    return str(n)
+
+
+def _row_pet_app(page: Dict[str, Any], props: Dict[str, Any]) -> Dict[str, Any]:
+    """Pet-App DB → canonical Lead shape for PawMind."""
+    nombre = _read_title(props, "Nombre")
+    edad_num = _read_number(props, "Edad")
+    edad_display = f"{edad_num} años" if edad_num else ""
+    raza = _read_select(props, "Raza") or _read_rich_text(props, "Raza")
+    vacunas = _read_multi_select(props, "Vacunas")
+    ultima = _read_date_flexible(props, ULTIMA_REV_KEYS)
+    historial = _read_rich_text(props, "Historial")
+    workshop_label = f"Última rev.: {ultima}" if ultima else "Pet-App DB"
+    status_val = _read_status(props, "Status") if "Status" in props else "Not started"
+    opt_key = "Seguimiento" if "Seguimiento" in props else "Opt-in to updates"
+    opt_in = _read_checkbox(props, opt_key) if opt_key in props else False
+    return {
+        "id": page.get("id", ""),
+        "url": page.get("url", ""),
+        "name": nombre,
+        "company": edad_display,
+        "email": "",
+        "role": raza,
+        "phone": "",
+        "source": "",
+        "technical_level": edad_num or "—",
+        "interested_in": [],
+        "tools": vacunas,
+        "workshop": workshop_label,
+        "status": status_val or "Not started",
+        "opt_in": opt_in,
+        "message": historial,
+        "submitted_at": ultima,
+    }
+
+
+def _row_workshop(page: Dict[str, Any], props: Dict[str, Any]) -> Dict[str, Any]:
+    """Legacy workshop signup DB → Lead shape."""
     return {
         "id": page.get("id", ""),
         "url": page.get("url", ""),
@@ -203,6 +262,13 @@ def _row_from_props(page: Dict[str, Any], props: Dict[str, Any]) -> Dict[str, An
         "message": _read_rich_text(props, "Message"),
         "submitted_at": _read_created_time(props, "Submitted at"),
     }
+
+
+def _row_from_props(page: Dict[str, Any], props: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize a Notion page + props dict into the Lead shape."""
+    if _is_pet_schema(props):
+        return _row_pet_app(page, props)
+    return _row_workshop(page, props)
 
 
 def health_check(database_id: Optional[str] = None) -> NotionHealth:
@@ -432,24 +498,33 @@ def _write_checkbox(value: bool) -> Dict[str, Any]:
     return {"checkbox": bool(value)}
 
 
-# Lead-shape key -> (Notion property name, writer fn). Mirror of the order in
-# `_row_from_props` above. Anything not in this map is silently dropped from
-# patches (with a one-time warning) so the agent can pass through fields like
-# `id`/`url`/`submitted_at` without us trying to write them.
+def _write_number_edad(value: Any) -> Dict[str, Any]:
+    """Map Lead.company like \"3 años\" or technical_level \"3\" → Notion number."""
+    s = str(value or "")
+    m = re.search(r"\d+", s)
+    if not m:
+        return {"number": None}
+    return {"number": int(m.group())}
+
+
+def _write_ultima_rev(value: Any) -> Dict[str, Any]:
+    """ISO-ish date string → Notion date property for Última Rev."""
+    s = str(value or "").strip()
+    if not s:
+        return {"date": None}
+    day = s[:10] if len(s) >= 10 else s
+    return {"date": {"start": day}}
+
+
+# Lead-shape key -> (Notion property name, writer fn).
+# Pet-App DB (PawMind) column names — matches EXPECTED_PROPS / `_row_pet_app`.
 _LEAD_FIELD_TO_NOTION = {
-    "name": ("Full name", _write_title),
-    "company": ("Company", _write_rich_text),
-    "email": ("Email", _write_email),
-    "role": ("Role", _write_rich_text),
-    "phone": ("Phone", _write_phone),
-    "source": ("Source", _write_select),
-    "technical_level": ("How technical are you?", _write_select),
-    "interested_in": ("Interested in", _write_multi_select),
-    "tools": ("What tools do you use?", _write_multi_select),
-    "workshop": ("What workshop would you like to join next?", _write_select),
-    "status": ("Status", _write_status),
-    "opt_in": ("Opt-in to updates", _write_checkbox),
-    "message": ("Message", _write_rich_text),
+    "name": ("Nombre", _write_title),
+    "role": ("Raza", _write_select),
+    "company": ("Edad", _write_number_edad),
+    "message": ("Historial", _write_rich_text),
+    "tools": ("Vacunas", _write_multi_select),
+    "submitted_at": ("Última Rev.", _write_ultima_rev),
 }
 
 # Read-only fields the agent might helpfully include in a patch — silently
