@@ -2,14 +2,20 @@ import { McpUseProvider, useWidget, type WidgetMetadata } from "mcp-use/react";
 import React, { useMemo } from "react";
 import { z } from "zod";
 import { leadSchema, STATUSES, type Lead } from "../../src/lib/leads/types";
+import {
+  topStatus,
+  topVaccine,
+  vaccineCoveragePct,
+  vaccineDemand,
+} from "../../src/lib/leads/derive";
 import { SAMPLE_LEADS } from "../../src/lib/leads/sample";
 
 export const propSchema = z.object({
   leads: z
     .array(leadSchema)
-    .default([])
+    .optional()
     .describe(
-      "Lead rows. Pass an empty array (or omit) to render with the sample dataset.",
+      "Filas de mascotas. Omite para datos demo.",
     ),
 });
 
@@ -17,13 +23,13 @@ export type CanvasDashboardWidgetProps = z.infer<typeof propSchema>;
 
 export const widgetMetadata: WidgetMetadata = {
   description:
-    "Render the Workshop Lead Triage canvas dashboard: 4 quick-stat tiles (total / opt-in % / top workshop / developers), a status donut, and a workshop-demand bar chart.",
+    "Dashboard PawMind: KPIs de vacunas y estado, donut de estado, barras por tipo de vacuna.",
   props: propSchema,
   exposeAsTool: false,
   metadata: {
     prefersBorder: false,
-    invoking: "Aggregating leads…",
-    invoked: "Dashboard ready",
+    invoking: "Agregando…",
+    invoked: "Dashboard listo",
   },
 };
 
@@ -61,7 +67,7 @@ const CanvasDashboardWidget: React.FC = () => {
           <QuickStats leads={leads} />
           <div className="grid gap-3 md:grid-cols-2">
             <StatusDonut leads={leads} />
-            <WorkshopBars leads={leads} />
+            <VaccineBars leads={leads} />
           </div>
         </div>
       </div>
@@ -83,49 +89,38 @@ interface Tile {
 function QuickStats({ leads }: { leads: Lead[] }) {
   const tiles = useMemo<Tile[]>(() => {
     const total = leads.length;
-    const optIns = leads.filter((l) => l.opt_in).length;
-    const optInPct = total === 0 ? 0 : Math.round((optIns / total) * 100);
-
-    const counts = new Map<string, number>();
-    for (const l of leads) {
-      const w = l.workshop || "Not sure yet";
-      counts.set(w, (counts.get(w) ?? 0) + 1);
-    }
-    let top: { name: string; count: number } | null = null;
-    for (const [name, count] of counts) {
-      if (!top || count > top.count) top = { name, count };
-    }
-
-    const developers = leads.filter(
-      (l) =>
-        l.technical_level === "Developer" ||
-        l.technical_level === "Advanced / expert",
+    const cov = vaccineCoveragePct(leads);
+    const withVac = leads.filter((l) => (l.tools?.length ?? 0) > 0).length;
+    const vac = topVaccine(leads);
+    const st = topStatus(leads);
+    const notes = leads.filter(
+      (l) => (l.message?.trim() ?? "").length > 0,
     ).length;
 
     return [
       {
-        label: "total leads",
+        label: "perfiles",
         value: total.toString(),
-        meta: total === 1 ? "lead in canvas" : "leads in canvas",
+        meta: total === 1 ? "mascota en vista" : "mascotas en vista",
         accent: "lilac",
       },
       {
-        label: "opt-in",
-        value: `${optInPct}%`,
-        meta: `${optIns} / ${total}`,
+        label: "cobertura vacunas",
+        value: `${cov}%`,
+        meta: `${withVac} / ${total} con vacunas`,
         accent: "mint",
       },
       {
-        label: "top workshop",
-        value: top?.name ?? "—",
-        meta: top ? `${top.count} interested` : "no leads yet",
+        label: "vacuna top",
+        value: vac ?? "—",
+        meta: vac ? "más registrada" : "sin datos",
         accent: "blue",
       },
       {
-        label: "developers",
-        value: developers.toString(),
+        label: "estado frecuente",
+        value: st ?? "—",
         meta:
-          total === 0 ? "—" : `${Math.round((developers / total) * 100)}% of canvas`,
+          total === 0 ? "—" : `${notes} perfiles con historial`,
         accent: "orange",
       },
     ];
@@ -175,8 +170,9 @@ function StatusDonut({ leads }: { leads: Lead[] }) {
     const counts = new Map<string, number>();
     for (const s of STATUSES) counts.set(s, 0);
     for (const l of leads) {
-      const s = (STATUSES as readonly string[]).includes(l.status)
-        ? l.status
+      const raw = l.status ?? "Not started";
+      const s = (STATUSES as readonly string[]).includes(raw)
+        ? raw
         : "Not started";
       counts.set(s, (counts.get(s) ?? 0) + 1);
     }
@@ -252,7 +248,7 @@ function StatusDonut({ leads }: { leads: Lead[] }) {
               textTransform: "uppercase",
             }}
           >
-            leads
+            perfiles
           </text>
         </svg>
       </div>
@@ -262,7 +258,7 @@ function StatusDonut({ leads }: { leads: Lead[] }) {
           className="text-[10px] uppercase tracking-wide text-neutral-500"
           style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace" }}
         >
-          status
+          estado
         </div>
         <ul className="mt-2 grid gap-1.5">
           {segments.map((seg) => {
@@ -307,29 +303,20 @@ function StatusDonut({ leads }: { leads: Lead[] }) {
   );
 }
 
-// ---------- WorkshopBars ----------
+// ---------- VaccineBars ----------
 
-function WorkshopBars({ leads }: { leads: Lead[] }) {
-  const rows = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const l of leads) {
-      const key = l.workshop?.trim() || "Not sure yet";
-      counts[key] = (counts[key] ?? 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [leads]);
+function VaccineBars({ leads }: { leads: Lead[] }) {
+  const rows = useMemo(() => vaccineDemand(leads), [leads]);
 
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-[#DBDBE5] bg-white p-4 text-sm text-neutral-500 shadow-sm">
-        No leads loaded yet.
+        Sin vacunas registradas en estos perfiles.
       </div>
     );
   }
 
-  const visible = rows.slice(0, 6);
+  const visible = rows.slice(0, 8);
   const max = Math.max(1, ...visible.map((r) => r.count));
 
   return (
@@ -339,13 +326,13 @@ function WorkshopBars({ leads }: { leads: Lead[] }) {
           className="text-[10px] uppercase tracking-wide text-neutral-500"
           style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace" }}
         >
-          workshop demand
+          vacunas
         </span>
         <span
           className="text-[10px] uppercase tracking-wide text-neutral-500"
           style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace" }}
         >
-          {rows.length} workshops
+          {rows.length} tipos
         </span>
       </header>
       <ul className="flex flex-col gap-1.5">

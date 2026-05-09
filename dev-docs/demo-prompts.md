@@ -29,6 +29,6 @@ Drop these into the chat to exercise each layer:
 - *(Reload the browser. The conversation is still in the sidebar.)*
 
 **Manufact MCP** *(requires `npm run dev:full` so the MCP server is running)*
-- "Show me the canvas dashboard." → `show-canvas-dashboard` widget
-- "Show me an email draft." → `show-email-draft` widget (HITL — Send fires `post-email-comment`)
-- "Show me the workshop lead list." → `show-lead-list` widget
+- "Dashboard de salud de PawMind." → `show-pet-health-dashboard` widget
+- "Borrador de nota veterinaria." → `show-vet-note-draft` widget (HITL — Send → `post-vet-note-comment`)
+- "Lista de perfiles Pet-App." → `show-pet-profile-list` widget

@@ -20,25 +20,27 @@ import {
 import { SAMPLE_LEADS, SAMPLE_SEGMENTS } from "../../src/lib/leads/sample";
 
 export const propSchema = z.object({
-  leads: z.array(leadSchema).default([]).describe(
-    "Lead rows to render. Pass an empty array (or omit) to use the sample dataset.",
-  ),
-  segments: z.array(segmentSchema).default([]).describe(
-    "Optional segments — controls colored dots on lead cards.",
-  ),
+  leads: z
+    .array(leadSchema)
+    .optional()
+    .describe("Filas de mascotas. Omite para datos demo."),
+  segments: z
+    .array(segmentSchema)
+    .optional()
+    .describe("Segmentos opcionales."),
 });
 
 export type LeadPipelineWidgetProps = z.infer<typeof propSchema>;
 
 export const widgetMetadata: WidgetMetadata = {
   description:
-    "Render the Workshop Lead Triage pipeline view: kanban columns by status (read-only).",
+    "Tablero kanban por estado — perfiles de mascotas (solo lectura).",
   props: propSchema,
   exposeAsTool: false,
   metadata: {
     prefersBorder: false,
-    invoking: "Loading pipeline…",
-    invoked: "Pipeline ready",
+    invoking: "Cargando tablero…",
+    invoked: "Tablero listo",
   },
 };
 
@@ -50,7 +52,7 @@ const LeadPipelineWidget: React.FC = () => {
     : SAMPLE_SEGMENTS;
   const groups = groupByStatus(leads);
   const segmentByLead = (id: string) =>
-    segments.filter((s) => s.leadIds.includes(id));
+    segments.filter((s) => (s.leadIds ?? []).includes(id));
 
   return (
     <Frame leads={leads}>
@@ -125,47 +127,56 @@ function LeadCard({ lead, segments }: { lead: Lead; segments: Segment[] }) {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${workshopClass(lead.workshop)}`}
-        >
-          {lead.workshop}
-        </span>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${techLevelClass(lead.technical_level)}`}
-        >
-          {lead.technical_level}
-        </span>
+        {lead.workshop ? (
+          <span
+            className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${workshopClass(lead.workshop)}`}
+            title={lead.workshop}
+          >
+            <span className="truncate">{lead.workshop}</span>
+          </span>
+        ) : null}
+        {lead.technical_level ? (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${techLevelClass(lead.technical_level)}`}
+          >
+            edad {lead.technical_level}
+          </span>
+        ) : null}
       </div>
 
-      {lead.tools.length > 0 ? (
+      {(lead.tools?.length ?? 0) > 0 ? (
         <div className="flex flex-wrap gap-1">
-          {lead.tools.slice(0, 5).map((t) => (
+          {(lead.tools ?? []).slice(0, 5).map((t) => (
             <span
               key={t}
-              className={`rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 ${
-                t === "CopilotKit" ? "ring-1 ring-blue-500/40" : ""
-              }`}
+              className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
             >
               {t}
             </span>
           ))}
-          {lead.tools.length > 5 ? (
+          {(lead.tools ?? []).length > 5 ? (
             <span className="text-[10px] text-neutral-500">
-              +{lead.tools.length - 5}
+              +{(lead.tools ?? []).length - 5}
             </span>
           ) : null}
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-        <span className="truncate">✉ {lead.email}</span>
+      <div className="flex items-start justify-between gap-2 pt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+        <span className="line-clamp-2 min-w-0">
+          {lead.message ? (
+            <>📋 {lead.message}</>
+          ) : lead.email ? (
+            <>✉ {lead.email}</>
+          ) : (
+            <span className="text-neutral-400">Sin historial</span>
+          )}
+        </span>
         {lead.opt_in ? (
-          <span className="text-emerald-600 dark:text-emerald-400">
-            ✓ opt-in
+          <span className="shrink-0 text-emerald-600 dark:text-emerald-400">
+            ✓ activo
           </span>
-        ) : (
-          <span className="text-neutral-400">no opt-in</span>
-        )}
+        ) : null}
       </div>
     </div>
   );

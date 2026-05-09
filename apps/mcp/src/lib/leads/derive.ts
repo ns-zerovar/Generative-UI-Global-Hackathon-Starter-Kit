@@ -10,8 +10,9 @@ export function groupByStatus(leads: Lead[]): Record<string, Lead[]> {
   const groups: Record<string, Lead[]> = {};
   for (const s of STATUSES) groups[s] = [];
   for (const l of leads) {
-    const key = (STATUSES as readonly string[]).includes(l.status)
-      ? l.status
+    const raw = l.status ?? "Not started";
+    const key = (STATUSES as readonly string[]).includes(raw)
+      ? raw
       : "Not started";
     (groups[key] ||= []).push(l);
   }
@@ -22,8 +23,9 @@ export function workshopDemand(leads: Lead[]): DemandRow[] {
   const counts: Record<string, number> = {};
   for (const w of WORKSHOPS) counts[w] = 0;
   for (const l of leads) {
-    const key = (WORKSHOPS as readonly string[]).includes(l.workshop)
-      ? l.workshop
+    const raw = l.workshop ?? "";
+    const key = (WORKSHOPS as readonly string[]).includes(raw as Workshop)
+      ? raw
       : "Not sure yet";
     counts[key] = (counts[key] ?? 0) + 1;
   }
@@ -32,20 +34,40 @@ export function workshopDemand(leads: Lead[]): DemandRow[] {
   );
 }
 
-export function toolUsage(leads: Lead[]): DemandRow[] {
+/** Vaccine / tag counts from multi-select Vacunas → `tools`. */
+export function vaccineDemand(leads: Lead[]): DemandRow[] {
   const counts: Record<string, number> = {};
   for (const l of leads) {
-    for (const t of l.tools) counts[t] = (counts[t] ?? 0) + 1;
+    for (const t of l.tools ?? []) {
+      counts[t] = (counts[t] ?? 0) + 1;
+    }
   }
   return Object.entries(counts)
     .map(([label, count]) => ({ label, count }))
     .sort((a, b) => b.count - a.count);
 }
 
+/** Counts distinct última-revisión / follow-up strings (`workshop` holdover field). */
+export function ultimaRevisionDemand(leads: Lead[]): DemandRow[] {
+  const counts: Record<string, number> = {};
+  for (const l of leads) {
+    const key = (l.workshop ?? "").trim() || "—";
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function toolUsage(leads: Lead[]): DemandRow[] {
+  return vaccineDemand(leads);
+}
+
 export function techLevelBreakdown(leads: Lead[]): DemandRow[] {
   const counts: Record<string, number> = {};
   for (const l of leads) {
-    counts[l.technical_level] = (counts[l.technical_level] ?? 0) + 1;
+    const k = l.technical_level ?? "—";
+    counts[k] = (counts[k] ?? 0) + 1;
   }
   return Object.entries(counts)
     .map(([label, count]) => ({ label, count }))
@@ -70,6 +92,30 @@ export function topWorkshop(leads: Lead[]): Workshop | null {
   const ranked = workshopDemand(leads);
   if (!ranked.length || ranked[0].count === 0) return null;
   return ranked[0].label as Workshop;
+}
+
+export function topVaccine(leads: Lead[]): string | null {
+  const ranked = vaccineDemand(leads);
+  if (!ranked.length || ranked[0].count === 0) return null;
+  return ranked[0].label;
+}
+
+/** Share of profiles with at least one vaccine tag (`tools`). */
+export function vaccineCoveragePct(leads: Lead[]): number {
+  if (!leads.length) return 0;
+  const n = leads.filter((l) => (l.tools?.length ?? 0) > 0).length;
+  return Math.round((n / leads.length) * 100);
+}
+
+/** Most frequent status string (defaults bucket to Not started). */
+export function topStatus(leads: Lead[]): string | null {
+  const counts: Record<string, number> = {};
+  for (const l of leads) {
+    const k = l.status ?? "Not started";
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return ranked[0]?.[0] ?? null;
 }
 
 export function initials(name: string): string {

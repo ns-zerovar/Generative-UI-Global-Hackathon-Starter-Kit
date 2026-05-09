@@ -1,31 +1,31 @@
 // Auto-generated tool registry types - DO NOT EDIT MANUALLY
 // This file is regenerated whenever tools are added, removed, or updated during development
-// Generated at: 2026-05-09T20:19:59.643Z
+// Generated at: 2026-05-09T22:56:56.811Z
 
 declare module "mcp-use/react" {
   interface ToolRegistry {
-    "post-email-comment": {
+    "post-vet-note-comment": {
       input: { "leadId": string; "subject": string; "body": string };
       output: Record<string, unknown>;
     };
-    "show-canvas-dashboard": {
-      input: { "leads": Array<{ "id": string; "name": string; "email": string; "company": string; "role": string; "workshop": string; "technical_level": string; "tools": Array<string>; "status": string; "opt_in": boolean }> };
+    "show-pet-health-dashboard": {
+      input: { "leads"?: Array<{ "id": string; "name": string; "email"?: string | undefined; "company"?: string | undefined; "role"?: string | undefined; "workshop"?: string | undefined; "technical_level"?: string | undefined; "tools"?: Array<string> | undefined; "status"?: string | undefined; "opt_in"?: boolean | undefined; "message"?: string | undefined }> | undefined };
       output: Record<string, unknown>;
     };
-    "show-email-draft": {
-      input: { "leadId": string; "leadName"?: string | undefined; "leadEmail"?: string | undefined; "leadCompany"?: string | undefined; "leadRole"?: string | undefined; "subject": string; "body": string };
+    "show-pet-profile-list": {
+      input: { "leads"?: Array<{ "id": string; "name": string; "email"?: string | undefined; "company"?: string | undefined; "role"?: string | undefined; "workshop"?: string | undefined; "technical_level"?: string | undefined; "tools"?: Array<string> | undefined; "status"?: string | undefined; "opt_in"?: boolean | undefined; "message"?: string | undefined }> | undefined; "segments"?: Array<{ "id": string; "name": string; "color"?: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "slate" | undefined; "leadIds"?: Array<string> | undefined }> | undefined };
       output: Record<string, unknown>;
     };
-    "show-lead-demand": {
-      input: { "leads": Array<{ "id": string; "name": string; "email": string; "company": string; "role": string; "workshop": string; "technical_level": string; "tools": Array<string>; "status": string; "opt_in": boolean }> };
+    "show-pet-status-board": {
+      input: { "leads"?: Array<{ "id": string; "name": string; "email"?: string | undefined; "company"?: string | undefined; "role"?: string | undefined; "workshop"?: string | undefined; "technical_level"?: string | undefined; "tools"?: Array<string> | undefined; "status"?: string | undefined; "opt_in"?: boolean | undefined; "message"?: string | undefined }> | undefined; "segments"?: Array<{ "id": string; "name": string; "color"?: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "slate" | undefined; "leadIds"?: Array<string> | undefined }> | undefined };
       output: Record<string, unknown>;
     };
-    "show-lead-list": {
-      input: { "leads": Array<{ "id": string; "name": string; "email": string; "company": string; "role": string; "workshop": string; "technical_level": string; "tools": Array<string>; "status": string; "opt_in": boolean }>; "segments": Array<{ "id": string; "name": string; "color"?: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "slate" | undefined; "leadIds": Array<string> }> };
+    "show-vaccination-summary": {
+      input: { "leads"?: Array<{ "id": string; "name": string; "email"?: string | undefined; "company"?: string | undefined; "role"?: string | undefined; "workshop"?: string | undefined; "technical_level"?: string | undefined; "tools"?: Array<string> | undefined; "status"?: string | undefined; "opt_in"?: boolean | undefined; "message"?: string | undefined }> | undefined };
       output: Record<string, unknown>;
     };
-    "show-lead-pipeline": {
-      input: { "leads": Array<{ "id": string; "name": string; "email": string; "company": string; "role": string; "workshop": string; "technical_level": string; "tools": Array<string>; "status": string; "opt_in": boolean }>; "segments": Array<{ "id": string; "name": string; "color"?: "indigo" | "emerald" | "amber" | "rose" | "sky" | "violet" | "slate" | undefined; "leadIds": Array<string> }> };
+    "show-vet-note-draft": {
+      input: { "leadId"?: string | undefined; "leadName"?: string | undefined; "leadEmail"?: string | undefined; "leadCompany"?: string | undefined; "leadRole"?: string | undefined; "subject"?: string | undefined; "body"?: string | undefined };
       output: Record<string, unknown>;
     };
   }

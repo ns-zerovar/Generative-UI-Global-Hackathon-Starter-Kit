@@ -5,9 +5,8 @@ import { Frame } from "../../src/components/Frame";
 import { leadSchema, type Lead } from "../../src/lib/leads/types";
 import {
   techLevelBreakdown,
-  toolUsage,
-  workshopDemand,
-  WORKSHOP_BAR,
+  ultimaRevisionDemand,
+  vaccineDemand,
   TOOL_BAR,
   TECH_STROKE,
   type DemandRow,
@@ -15,22 +14,25 @@ import {
 import { SAMPLE_LEADS } from "../../src/lib/leads/sample";
 
 export const propSchema = z.object({
-  leads: z.array(leadSchema).default([]).describe(
-    "Lead rows to aggregate. Pass an empty array (or omit) to use the sample dataset.",
-  ),
+  leads: z
+    .array(leadSchema)
+    .optional()
+    .describe(
+      "Filas de mascotas. Omite el campo para usar datos demo.",
+    ),
 });
 
 export type LeadDemandWidgetProps = z.infer<typeof propSchema>;
 
 export const widgetMetadata: WidgetMetadata = {
   description:
-    "Render the Workshop Lead Triage demand view: workshop bars, technical-level donut, and tool usage bars.",
+    "Resumen PawMind: barras de vacunas, donut por edad (campo numérico), barras de etiquetas.",
   props: propSchema,
   exposeAsTool: false,
   metadata: {
     prefersBorder: false,
-    invoking: "Aggregating leads…",
-    invoked: "Demand ready",
+    invoking: "Agregando datos…",
+    invoked: "Resumen listo",
   },
 };
 
@@ -38,27 +40,29 @@ const LeadDemandWidget: React.FC = () => {
   const { props } = useWidget<LeadDemandWidgetProps>();
   const leads: Lead[] = props?.leads?.length ? props.leads : SAMPLE_LEADS;
 
-  const ws = workshopDemand(leads);
-  const tools = toolUsage(leads);
+  const vac = vaccineDemand(leads);
+  const rev = ultimaRevisionDemand(leads);
   const tech = techLevelBreakdown(leads);
 
   return (
     <Frame leads={leads}>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         <Section
-          title="Workshop demand"
-          subtitle="Which workshop should we run next?"
+          title="Vacunas registradas"
+          subtitle="Etiquetas multi-select del campo Vacunas en Notion"
           className="lg:col-span-7"
         >
           <HBar
-            rows={ws}
-            barClass={(label) => WORKSHOP_BAR[label] ?? "bg-blue-500"}
+            rows={vac}
+            barClass={(label) =>
+              TOOL_BAR[label as keyof typeof TOOL_BAR] ?? "bg-emerald-500"
+            }
           />
         </Section>
 
         <Section
-          title="Technical level"
-          subtitle="Pitch the right depth"
+          title="Edad"
+          subtitle="Valor numérico del campo Edad (o campo técnico heredado)"
           className="lg:col-span-5"
         >
           <Donut
@@ -66,20 +70,18 @@ const LeadDemandWidget: React.FC = () => {
             colorFor={(label) => TECH_STROKE[label] ?? "stroke-neutral-500"}
           />
           <p className="mt-3 text-[11px] text-neutral-500 dark:text-neutral-400">
-            filter to Developer →
+            Agrupación por valor tal como llega de Notion
           </p>
         </Section>
 
         <Section
-          title="Tools they're using"
-          subtitle="What audience to design content for"
+          title="Última revisión / seguimiento"
+          subtitle="Texto libre del campo mapeado desde Notion (herencia del kit)"
           className="lg:col-span-12"
         >
           <HBar
-            rows={tools}
-            barClass={(label) =>
-              TOOL_BAR[label] ?? "bg-neutral-900 dark:bg-neutral-100"
-            }
+            rows={rev}
+            barClass={() => "bg-sky-500"}
           />
         </Section>
       </div>
@@ -221,7 +223,7 @@ function Donut({
           dominantBaseline="central"
           className="fill-neutral-500 text-[10px] uppercase tracking-wider dark:fill-neutral-400"
         >
-          leads
+          perfiles
         </text>
       </svg>
       <ul className="flex flex-col gap-1.5 text-xs">

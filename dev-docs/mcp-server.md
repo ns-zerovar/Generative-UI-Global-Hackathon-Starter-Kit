@@ -24,11 +24,11 @@ This opens a public HTTPS URL like `https://<subdomain>.local.mcp-use.run/mcp`. 
 - **ChatGPT:** Settings → Connectors → Add MCP server → paste URL
 
 Smoke-test prompts (sample data is baked into each widget — no setup needed):
-- "Show me the workshop lead list." → `show-lead-list`
-- "Show the workshop demand breakdown." → `show-lead-demand`
-- "Show me the lead pipeline." → `show-lead-pipeline`
-- "Show me the canvas dashboard." → `show-canvas-dashboard` (4 quick-stat tiles + status donut + workshop-demand bars)
-- "Draft an outreach email." → `show-email-draft` (HITL card; clicking Send fires `post-email-comment` which echoes a Notion-comment confirmation)
+- "Lista los perfiles de PawMind." → `show-pet-profile-list`
+- "Resumen de vacunas / etiquetas." → `show-vaccination-summary`
+- "Tablero por estado." → `show-pet-status-board`
+- "Dashboard de salud." → `show-pet-health-dashboard` (KPIs + donut de estado + barras por vacuna)
+- "Borrador de nota para el expediente." → `show-vet-note-draft` (HITL; Send usa `post-vet-note-comment`, demo)
 
 ## Deploy to Manufact Cloud
 

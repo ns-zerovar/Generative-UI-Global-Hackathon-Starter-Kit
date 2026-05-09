@@ -1,8 +1,17 @@
 import { z } from "zod";
 
+/**
+ * Canonical row shape for PawMind / Pet-App DB (Notion).
+ * Matches the normalized `Lead` dict from `apps/agent` Notion sync.
+ *
+ * IMPORTANT for OpenAI tool schemas: do **not** use `.default([])` on array
+ * fields — it can serialize to invalid JSON Schema (`False is not of type
+ * 'array'`). Use `.optional()` and coerce with `?? []` at runtime.
+ */
 export const STATUSES = ["Not started", "In progress", "Done"] as const;
 export type LeadStatus = (typeof STATUSES)[number];
 
+/** Legacy workshop enum — still used by derive charts for mixed data. */
 export const WORKSHOPS = [
   "Agentic UI (AG-UI)",
   "MCP Apps / Tooling",
@@ -32,26 +41,33 @@ export const SEGMENT_COLORS = [
 ] as const;
 export type SegmentColor = (typeof SEGMENT_COLORS)[number];
 
-export const leadSchema = z.object({
+/** One pet profile row (maps Notion: Nombre, Raza, Edad, Vacunas, Última Rev., Historial). */
+export const petProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string(),
-  company: z.string().default(""),
-  role: z.string().default(""),
-  workshop: z.string(),
-  technical_level: z.string(),
-  tools: z.array(z.string()).default([]),
-  status: z.string().default("Not started"),
-  opt_in: z.boolean().default(false),
+  email: z.string().optional(),
+  company: z.string().optional(),
+  role: z.string().optional(),
+  workshop: z.string().optional(),
+  technical_level: z.string().optional(),
+  tools: z.array(z.string()).optional(),
+  status: z.string().optional(),
+  opt_in: z.boolean().optional(),
+  /** Historial / clinical notes */
+  message: z.string().optional(),
 });
 
-export type Lead = z.infer<typeof leadSchema>;
+export type Lead = z.infer<typeof petProfileSchema>;
+
+/** Alias for widgets / tools that still import `leadSchema`. */
+export const leadSchema = petProfileSchema;
 
 export const segmentSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.enum(SEGMENT_COLORS).optional(),
-  leadIds: z.array(z.string()).default([]),
+  /** No `.default([])` — OpenAI strict JSON Schema rejects it on nested arrays. */
+  leadIds: z.array(z.string()).optional(),
 });
 
 export type Segment = z.infer<typeof segmentSchema>;

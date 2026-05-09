@@ -6,15 +6,15 @@ import {
   type Lead,
   type Segment,
 } from "./src/lib/leads/types";
-import { topWorkshop } from "./src/lib/leads/derive";
+import { topVaccine } from "./src/lib/leads/derive";
 import { SAMPLE_LEADS, SAMPLE_SEGMENTS } from "./src/lib/leads/sample";
 
 const server = new MCPServer({
-  name: "hackathon-mcp",
-  title: "hackathon-mcp",
+  name: "pawmind-mcp",
+  title: "pawmind-mcp",
   version: "1.0.0",
   description:
-    "Workshop Lead Triage — visual MCP widgets for the Notion-sourced workshop leads canvas: list, demand, pipeline, dashboard (stats + donut + bars), and a HITL email-draft card.",
+    "PawMind — widgets MCP para perfiles de mascotas (Pet-App DB / Notion): tabla de perfiles, resumen de vacunas, tablero de salud y pipeline. Sin arrays con `.default([])` en el esquema de herramientas (compatible OpenAI).",
   baseUrl: process.env.MCP_URL || "http://localhost:3011",
   favicon: "favicon.ico",
   websiteUrl: "https://mcp-use.com",
@@ -27,47 +27,50 @@ const server = new MCPServer({
   ],
 });
 
-// Shared input schema. All three tools accept an optional `leads` array (and
-// `segments`, where applicable). When omitted or empty, the widget falls back
-// to the sample dataset baked into `src/lib/leads/sample.ts` so the views can
-// be demoed inside ChatGPT/Claude without a backing fetch.
-const leadsInput = z.object({
+/**
+ * Tool input schema — **never** use `z.array(...).default([])` here.
+ * OpenAI's function validator rejects the resulting JSON Schema with:
+ * `False is not of type 'array'`.
+ */
+const profilesInput = z.object({
   leads: z
     .array(leadSchema)
-    .default([])
+    .optional()
     .describe(
-      "Lead rows. Omit or pass an empty array to render with the sample dataset.",
+      "Filas de mascotas (misma forma que el agente Notion). Omite el campo para usar datos demo.",
     ),
   segments: z
     .array(segmentSchema)
-    .default([])
-    .describe("Optional segments for colored dots."),
+    .optional()
+    .describe("Segmentos opcionales para puntos de color."),
 });
 
-function pickLeads(input: { leads: Lead[] }): Lead[] {
-  return input.leads.length ? input.leads : SAMPLE_LEADS;
+function pickLeads(input: { leads?: Lead[] }): Lead[] {
+  const rows = input.leads;
+  return rows && rows.length ? rows : SAMPLE_LEADS;
 }
 
-function pickSegments(input: { segments: Segment[] }): Segment[] {
-  return input.segments.length ? input.segments : SAMPLE_SEGMENTS;
+function pickSegments(input: { segments?: Segment[] }): Segment[] {
+  const rows = input.segments;
+  return rows && rows.length ? rows : SAMPLE_SEGMENTS;
 }
 
 function summarize(leads: Lead[], view: string): string {
-  const top = topWorkshop(leads);
-  const tail = top ? ` Top demand: ${top}.` : "";
-  return `Rendered the ${view} view for ${leads.length} leads.${tail}`;
+  const vac = topVaccine(leads);
+  const tail = vac ? ` Vacuna más común en datos: ${vac}.` : "";
+  return `Vista «${view}»: ${leads.length} perfil(es) de mascota.${tail}`;
 }
 
 server.tool(
   {
-    name: "show-lead-list",
+    name: "show-pet-profile-list",
     description:
-      "Render the workshop lead triage *list* view (KPI tiles + table of leads).",
-    schema: leadsInput,
+      "Muestra la tabla de perfiles de mascotas (PawMind): nombre, raza, edad, vacunas, última revisión, historial clínico.",
+    schema: profilesInput,
     widget: {
       name: "lead-list",
-      invoking: "Loading leads…",
-      invoked: "List ready",
+      invoking: "Cargando perfiles…",
+      invoked: "Lista lista",
     },
   },
   async (input) => {
@@ -75,42 +78,42 @@ server.tool(
     const segments = pickSegments(input);
     return widget({
       props: { leads, segments },
-      output: text(summarize(leads, "list")),
+      output: text(summarize(leads, "lista")),
     });
   },
 );
 
 server.tool(
   {
-    name: "show-lead-demand",
+    name: "show-vaccination-summary",
     description:
-      "Render the workshop lead triage *demand* view (workshop bars, technical-level donut, tool usage).",
-    schema: leadsInput.pick({ leads: true }),
+      "Gráficos de vacunas / etiquetas y uso de campos (sustituye la vista «demanda de taller» del kit anterior).",
+    schema: profilesInput.pick({ leads: true }),
     widget: {
       name: "lead-demand",
-      invoking: "Aggregating leads…",
-      invoked: "Demand ready",
+      invoking: "Agregando datos…",
+      invoked: "Resumen listo",
     },
   },
   async (input) => {
     const leads = pickLeads(input);
     return widget({
       props: { leads },
-      output: text(summarize(leads, "demand")),
+      output: text(summarize(leads, "vacunas")),
     });
   },
 );
 
 server.tool(
   {
-    name: "show-lead-pipeline",
+    name: "show-pet-status-board",
     description:
-      "Render the workshop lead triage *pipeline* view (kanban columns by status, read-only).",
-    schema: leadsInput,
+      "Tablero tipo kanban por estado (solo lectura) para los perfiles cargados.",
+    schema: profilesInput,
     widget: {
       name: "lead-pipeline",
-      invoking: "Loading pipeline…",
-      invoked: "Pipeline ready",
+      invoking: "Cargando tablero…",
+      invoked: "Tablero listo",
     },
   },
   async (input) => {
@@ -118,21 +121,21 @@ server.tool(
     const segments = pickSegments(input);
     return widget({
       props: { leads, segments },
-      output: text(summarize(leads, "pipeline")),
+      output: text(summarize(leads, "tablero")),
     });
   },
 );
 
 server.tool(
   {
-    name: "show-canvas-dashboard",
+    name: "show-pet-health-dashboard",
     description:
-      "Render the Workshop Lead Triage canvas dashboard: 4 quick-stat tiles + status donut + workshop-demand bars. Mirrors the layout above the kanban in the Next.js canvas.",
-    schema: leadsInput.pick({ leads: true }),
+      "Dashboard de salud: KPIs + donut de estado + barras (adaptado a datos de mascotas).",
+    schema: profilesInput.pick({ leads: true }),
     widget: {
       name: "canvas-dashboard",
-      invoking: "Aggregating leads…",
-      invoked: "Dashboard ready",
+      invoking: "Agregando…",
+      invoked: "Dashboard listo",
     },
   },
   async (input) => {
@@ -144,61 +147,52 @@ server.tool(
   },
 );
 
-// Sample draft used when the inspector calls show-email-draft with no
-// arguments. Mirrors the SAMPLE_LEADS fallback the other widgets use so the
-// widget renders cleanly out of the box.
 const SAMPLE_DRAFT = {
-  leadId: "sample-ada-lovelace",
-  leadName: "Ada Lovelace",
-  leadEmail: "ada.lovelace@example.com",
-  leadCompany: "Mango Labs",
-  leadRole: "Founder",
-  subject: "Following up on your Agentic UI workshop interest",
+  leadId: "sample-croqueta",
+  leadName: "Croqueta",
+  leadEmail: "",
+  leadCompany: "",
+  leadRole: "Pastor Belga",
+  subject: "Seguimiento displasia de cadera",
   body:
-    "Hi Ada,\n\n" +
-    "Thanks for signing up for the Agentic UI (AG-UI) workshop — your background at Mango Labs is exactly the profile we're building the curriculum for.\n\n" +
-    "A quick question before we lock the date: are there one or two specific patterns (state sync, tool gating, HITL) you're hoping we cover?\n\n" +
-    "Best,\nWorkshop team",
+    "Hola,\n\nQueríamos recordarte revisar la marcha tras la última visita y mantener el peso estable.\n\nSaludos,\nEquipo PawMind",
 };
 
 server.tool(
   {
-    name: "show-email-draft",
+    name: "show-vet-note-draft",
     description:
-      "Render a human-in-the-loop email draft for a single lead. Subject and body are editable in place; clicking Send calls post-email-comment to persist the message as a Notion comment. Defaults to a sample draft when called with no arguments.",
+      "Borrador editable de nota para el expediente (HITL). Por defecto datos demo.",
     schema: z.object({
       leadId: z
         .string()
-        .default(SAMPLE_DRAFT.leadId)
-        .describe("Notion page id of the lead to email."),
-      leadName: z.string().default(SAMPLE_DRAFT.leadName).optional(),
-      leadEmail: z.string().default(SAMPLE_DRAFT.leadEmail).optional(),
-      leadCompany: z.string().default(SAMPLE_DRAFT.leadCompany).optional(),
-      leadRole: z.string().default(SAMPLE_DRAFT.leadRole).optional(),
-      subject: z
-        .string()
-        .default(SAMPLE_DRAFT.subject)
-        .describe("Initial subject line — user may edit before sending."),
-      body: z
-        .string()
-        .default(SAMPLE_DRAFT.body)
-        .describe("Initial email body — user may edit before sending."),
+        .optional()
+        .describe("Id de página Notion del perfil."),
+      leadName: z.string().optional(),
+      leadEmail: z.string().optional(),
+      leadCompany: z.string().optional(),
+      leadRole: z.string().optional(),
+      subject: z.string().optional(),
+      body: z.string().optional(),
     }),
     widget: {
       name: "email-draft",
-      invoking: "Drafting email…",
-      invoked: "Draft ready",
+      invoking: "Preparando borrador…",
+      invoked: "Borrador listo",
     },
   },
   async (input) => {
     const props = {
       ...SAMPLE_DRAFT,
       ...input,
+      leadId: input.leadId ?? SAMPLE_DRAFT.leadId,
+      subject: input.subject ?? SAMPLE_DRAFT.subject,
+      body: input.body ?? SAMPLE_DRAFT.body,
     };
     return widget({
       props,
       output: text(
-        `Drafted an email to ${props.leadName ?? props.leadEmail ?? props.leadId}: ${props.subject}`,
+        `Borrador para ${props.leadName ?? props.leadId}: ${props.subject}`,
       ),
     });
   },
@@ -206,35 +200,20 @@ server.tool(
 
 server.tool(
   {
-    name: "post-email-comment",
+    name: "post-vet-note-comment",
     description:
-      "Post an APPROVED email draft as a comment on the lead's Notion page. Called by the email-draft widget when the user clicks Send. Returns a confirmation message. Defaults to the sample draft when called with no arguments.",
+      "Confirma el envío del borrador (demo — conectar Notion en producción).",
     schema: z.object({
-      leadId: z
-        .string()
-        .default(SAMPLE_DRAFT.leadId)
-        .describe("Notion page id of the lead."),
-      subject: z
-        .string()
-        .default(SAMPLE_DRAFT.subject)
-        .describe("Final subject line, after the user's edits."),
-      body: z
-        .string()
-        .default(SAMPLE_DRAFT.body)
-        .describe("Final email body, after the user's edits."),
+      leadId: z.string(),
+      subject: z.string(),
+      body: z.string(),
     }),
   },
-  async ({ leadId, subject, body: _body }) => {
-    // Mock-only in this MCP demo. The same shape ships in the Next.js
-    // canvas's post_lead_comment LangChain tool, which posts to Notion via
-    // @notionhq/notion-mcp-server. Wire that server here when running
-    // against a live workspace.
-    return text(
-      `Posted email comment on lead ${leadId}: "${subject}"`,
-    );
+  async ({ leadId, subject }) => {
+    return text(`Nota registrada (demo) para ${leadId}: "${subject}"`);
   },
 );
 
 server.listen().then(() => {
-  console.log("MCP server running on port 3011");
+  console.log("PawMind MCP server running on port 3011");
 });

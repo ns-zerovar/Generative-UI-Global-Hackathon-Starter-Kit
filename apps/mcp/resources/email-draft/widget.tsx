@@ -21,7 +21,7 @@ export type EmailDraftWidgetProps = z.infer<typeof propSchema>;
 
 export const widgetMetadata: WidgetMetadata = {
   description:
-    "Render a human-in-the-loop email draft. The user can edit subject and body in place; clicking Send calls the post-email-comment tool to persist the message as a Notion page comment.",
+    "Borrador HITL para notas de expediente; Send llama `post-vet-note-comment` (demo).",
   props: propSchema,
   exposeAsTool: false,
   metadata: {
@@ -33,7 +33,7 @@ export const widgetMetadata: WidgetMetadata = {
 
 const EmailDraftWidget: React.FC = () => {
   const { props, isPending } = useWidget<EmailDraftWidgetProps>();
-  const post = useCallTool("post-email-comment");
+  const post = useCallTool("post-vet-note-comment");
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");

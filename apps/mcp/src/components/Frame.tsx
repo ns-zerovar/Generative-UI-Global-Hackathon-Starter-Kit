@@ -1,6 +1,11 @@
 import React from "react";
 import type { Lead } from "../lib/leads/types";
-import { optInRate, topWorkshop, toolUsage, workshopClass } from "../lib/leads/derive";
+import {
+  topStatus,
+  topVaccine,
+  vaccineCoveragePct,
+  workshopClass,
+} from "../lib/leads/derive";
 
 interface FrameProps {
   leads: Lead[];
@@ -8,58 +13,55 @@ interface FrameProps {
 }
 
 /**
- * Shared chrome around each lead view: title, subtitle, and the four KPI
- * tiles. Mirrors the surface shown in the Next.js app so the widgets read as
- * the same product when surfaced inside Claude/ChatGPT.
+ * Shared chrome around each pet-profile view: title, subtitle, KPI tiles.
  */
 export function Frame({ leads, children }: FrameProps) {
-  const opt = optInRate(leads);
-  const top = topWorkshop(leads);
-  const tools = toolUsage(leads);
-  const topTool = tools[0]?.label ?? "—";
-  const topToolCount = tools[0]?.count ?? 0;
-  const subtitle = top
-    ? `${leads.length} leads from Notion · top demand: ${top}`
-    : `${leads.length} leads from Notion`;
+  const cov = vaccineCoveragePct(leads);
+  const vac = topVaccine(leads);
+  const status = topStatus(leads);
+  const withVac = leads.filter((l) => (l.tools?.length ?? 0) > 0).length;
+  const subtitle = vac
+    ? `${leads.length} perfiles · vacuna más registrada: ${vac}`
+    : `${leads.length} perfiles · Notion (Pet-App)`;
 
   return (
     <div className="w-full p-4 text-neutral-900 dark:text-neutral-50">
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-950">
         <div className="mb-4">
-          <h1 className="text-xl font-semibold">Workshop Lead Triage</h1>
+          <h1 className="text-xl font-semibold">PawMind</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             {subtitle}
           </p>
           <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             <span className="font-medium text-neutral-700 dark:text-neutral-200">
-              {leads.length} leads
+              {leads.length} perfiles
             </span>
             {" · "}
-            Notion: AI Workshop Provider Community
+            Fuente: base Pet-App en Notion
           </p>
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Metric label="Total leads" value={String(leads.length)} />
+          <Metric label="Total perfiles" value={String(leads.length)} />
           <Metric
-            label="Opt-in rate"
-            value={`${opt.pct}%`}
-            sub={`${opt.yes} of ${leads.length}`}
-            accentWidth={`${opt.pct}%`}
+            label="Cobertura vacunas"
+            value={`${cov}%`}
+            sub={`${withVac} de ${leads.length} con al menos una vacuna`}
+            accentWidth={`${cov}%`}
           />
           <Metric
-            label="Top workshop demand"
-            value={top ?? "—"}
+            label="Vacuna más común"
+            value={vac ?? "—"}
             valueClass={
-              top
-                ? `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${workshopClass(top)}`
+              vac
+                ? `inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${workshopClass("Not sure yet")}`
                 : ""
             }
           />
           <Metric
-            label="Most-used tool"
-            value={topTool}
-            sub={topToolCount ? `${topToolCount} signups` : undefined}
+            label="Estado frecuente"
+            value={status ?? "—"}
+            sub={status ? "campo Estado en Notion" : undefined}
           />
         </div>
 
@@ -110,4 +112,3 @@ function Metric({
     </div>
   );
 }
-
