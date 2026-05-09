@@ -1,0 +1,19 @@
+# PawMind stack — Qdrant for vector RAG (run alongside pawmind-api / pawmind-web on host).
+#
+# Usage from repo root:
+#   docker compose -f deployment/docker-compose.pawmind.yml up -d
+#
+name: pawmind-stack
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    ports:
+      - "${PAWMIND_QDRANT_PORT:-6333}:6333"
+      - "${PAWMIND_QDRANT_GRPC:-6334}:6334"
+    volumes:
+      - pawmind-qdrant-data:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  pawmind-qdrant-data:

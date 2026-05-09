@@ -1,0 +1,11 @@
+FROM node:22-alpine
+WORKDIR /app
+COPY package.json ./
+RUN npm install
+COPY . .
+ARG NEXT_PUBLIC_PAWMIND_API_URL=http://localhost:8010
+ENV NEXT_PUBLIC_PAWMIND_API_URL=$NEXT_PUBLIC_PAWMIND_API_URL
+ENV NODE_ENV=production
+RUN npm run build
+EXPOSE 3020
+CMD ["npm", "run", "start"]

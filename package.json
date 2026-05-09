@@ -24,7 +24,12 @@
     "license": "npx copilotkit license -n hackathon-kit",
     "build": "npm run build --workspace frontend",
     "start": "npm run start --workspace frontend",
-    "lint": "npm run lint --workspace frontend"
+    "lint": "npm run lint --workspace frontend",
+    "pawmind:infra": "docker compose --project-directory . -f deployment/docker-compose.pawmind.yml up -d",
+    "pawmind:infra:down": "docker compose --project-directory . -f deployment/docker-compose.pawmind.yml down",
+    "pawmind:dev": "concurrently -k -n paw-api,paw-web -c green,blue \"npm run pawmind:dev:api\" \"npm run pawmind:dev:web\"",
+    "pawmind:dev:api": "cd apps/pawmind-api && uv run uvicorn pawmind_api.main:app --reload --host 127.0.0.1 --port 8010 --app-dir src",
+    "pawmind:dev:web": "npm run dev --workspace pawmind-web"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

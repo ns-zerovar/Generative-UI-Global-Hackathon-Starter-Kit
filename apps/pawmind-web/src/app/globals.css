@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --pm-bg: #f4f7fb;
+  --pm-card: #ffffff;
+  --pm-text: #1a2b3c;
+  --pm-muted: #5c728a;
+  --pm-blue: #4a90d9;
+  --pm-teal: #2db5a8;
+  --pm-beige: #ebe4d7;
+  --pm-gray: #e8edf2;
+  --radius: 1rem;
+}
+
+@theme inline {
+  --font-sans: var(--font-dm), ui-sans-serif, system-ui;
+  --color-pm-bg: var(--pm-bg);
+  --color-pm-card: var(--pm-card);
+  --color-pm-text: var(--pm-text);
+  --color-pm-muted: var(--pm-muted);
+  --color-pm-blue: var(--pm-blue);
+  --color-pm-teal: var(--pm-teal);
+  --color-pm-beige: var(--pm-beige);
+  --color-pm-gray: var(--pm-gray);
+}
+
+body {
+  background: linear-gradient(165deg, var(--pm-bg) 0%, #dbeaf8 45%, var(--pm-beige) 100%);
+  color: var(--pm-text);
+  min-height: 100vh;
+}
