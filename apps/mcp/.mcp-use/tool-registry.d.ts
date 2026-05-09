@@ -1,13 +1,9 @@
 // Auto-generated tool registry types - DO NOT EDIT MANUALLY
 // This file is regenerated whenever tools are added, removed, or updated during development
-// Generated at: 2026-05-09T23:09:37.523Z
+// Generated at: 2026-05-09T22:56:56.811Z
 
 declare module "mcp-use/react" {
   interface ToolRegistry {
-    "generate-pet-portrait": {
-      input: { "name"?: string | undefined; "breed"?: string | undefined; "age"?: number | undefined; "historial"?: string | undefined; "visualStyle"?: "photorealistic" | "studio-soft-light" | "digital-art" | undefined; "texturePreset"?: "australian-cattle-dog-blue-heeler" | "generic" | undefined };
-      output: Record<string, unknown>;
-    };
     "post-vet-note-comment": {
       input: { "leadId": string; "subject": string; "body": string };
       output: Record<string, unknown>;
