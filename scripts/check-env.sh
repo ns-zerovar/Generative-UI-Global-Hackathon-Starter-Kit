@@ -22,6 +22,37 @@ cd "$REPO_ROOT"
 
 PROBLEMS=()
 
+# npm invokes this script with Git Bash or WSL; the Windows uv installer drops
+# binaries in %USERPROFILE%\.local\bin, which that bash often does not have on PATH.
+ensure_uv_on_path() {
+  if command -v uv >/dev/null 2>&1 || command -v uv.exe >/dev/null 2>&1; then
+    return 0
+  fi
+  local bindir=""
+  if [[ -x "${HOME}/.local/bin/uv.exe" ]]; then
+    bindir="${HOME}/.local/bin"
+  elif command -v wslpath >/dev/null 2>&1 && [[ -n "${USERPROFILE:-}" ]]; then
+    local whome=""
+    whome="$(wslpath "${USERPROFILE}" 2>/dev/null)" || whome=""
+    if [[ -n "$whome" && -x "${whome}/.local/bin/uv.exe" ]]; then
+      bindir="${whome}/.local/bin"
+    fi
+  fi
+  if [[ -n "$bindir" ]]; then
+    PATH="${bindir}:${PATH}"
+    export PATH
+  fi
+  command -v uv >/dev/null 2>&1 || command -v uv.exe >/dev/null 2>&1
+}
+
+uv_exec() {
+  if command -v uv >/dev/null 2>&1; then
+    uv "$@"
+  else
+    uv.exe "$@"
+  fi
+}
+
 # ---------- 1. Docker daemon -------------------------------------------------
 if ! command -v docker >/dev/null 2>&1; then
   PROBLEMS+=("Docker isn't installed. Install Docker Desktop and re-try.")
@@ -76,8 +107,12 @@ fi
 # network when we know auth will fail). The script prints OK: ... or FAIL: ...
 # with the share-gotcha fix on a 404.
 if [[ ${#PROBLEMS[@]} -eq 0 ]]; then
-  HEALTH_OUT="$(cd "$REPO_ROOT/apps/agent" && uv run python -m src.notion_tools --check 2>&1 || true)"
-  if ! grep -q "^OK: " <<<"$HEALTH_OUT"; then
+  if ! ensure_uv_on_path; then
+    PROBLEMS+=("uv isn't on PATH in this bash (npm runs preflight via bash). Install uv for your environment: https://docs.astral.sh/uv/getting-started/installation/ — or ensure %USERPROFILE%\\.local\\bin is visible here (Windows install puts uv.exe there).")
+  else
+    HEALTH_OUT="$(cd "$REPO_ROOT/apps/agent" && uv_exec run python -m src.notion_tools --check 2>&1 || true)"
+  fi
+  if [[ ${#PROBLEMS[@]} -eq 0 ]] && ! grep -q "^OK: " <<<"${HEALTH_OUT:-}"; then
     # Pass the FAIL output through verbatim — the --check flag already
     # formats the share-gotcha fix instructions when applicable.
     PROBLEMS+=("Notion health check failed:

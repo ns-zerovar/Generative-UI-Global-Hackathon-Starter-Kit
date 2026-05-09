@@ -1,0 +1,2 @@
+# Bash treats CRLF as part of the token (e.g. pipefail^M), breaking `set -o pipefail`.
+*.sh text eol=lf
