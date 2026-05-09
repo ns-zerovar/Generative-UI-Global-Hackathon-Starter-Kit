@@ -7,6 +7,10 @@ import {
   type Segment,
 } from "./src/lib/leads/types";
 import { topVaccine } from "./src/lib/leads/derive";
+import {
+  buildPetPortraitPrompt,
+  generateOpenAiPetImage,
+} from "./src/lib/pet-image";
 import { SAMPLE_LEADS, SAMPLE_SEGMENTS } from "./src/lib/leads/sample";
 
 const server = new MCPServer({
@@ -14,7 +18,7 @@ const server = new MCPServer({
   title: "pawmind-mcp",
   version: "1.0.0",
   description:
-    "PawMind — widgets MCP para perfiles de mascotas (Pet-App DB / Notion): tabla de perfiles, resumen de vacunas, tablero de salud y pipeline. Sin arrays con `.default([])` en el esquema de herramientas (compatible OpenAI).",
+    "PawMind — widgets MCP para perfiles de mascotas (Pet-App DB / Notion): tabla, vacunas, tablero, dashboard, borrador clínico y generación de retrato (prompt + DALL-E opcional). Sin `.default([])` en arrays de herramientas (compatible OpenAI).",
   baseUrl: process.env.MCP_URL || "http://localhost:3011",
   favicon: "favicon.ico",
   websiteUrl: "https://mcp-use.com",
@@ -194,6 +198,80 @@ server.tool(
       output: text(
         `Borrador para ${props.leadName ?? props.leadId}: ${props.subject}`,
       ),
+    });
+  },
+);
+
+const portraitInput = z.object({
+  name: z.string().optional().describe("Nombre del perro."),
+  breed: z.string().optional().describe("Raza (ej. Pastor Belga, Australian Cattle Dog)."),
+  age: z.number().optional().describe("Edad en años."),
+  historial: z
+    .string()
+    .optional()
+    .describe("Historial clínico o rasgos distintivos para el prompt."),
+  visualStyle: z
+    .enum(["photorealistic", "studio-soft-light", "digital-art"])
+    .optional()
+    .describe("Estilo visual del retrato."),
+  texturePreset: z
+    .enum(["australian-cattle-dog-blue-heeler", "generic"])
+    .optional()
+    .describe(
+      "Si eliges el preset Blue Heeler, el prompt sigue el aspecto de texturas UV tipo Australian Cattle Dog.",
+    ),
+});
+
+server.tool(
+  {
+    name: "generate-pet-portrait",
+    description:
+      "Genera un prompt listo para imagen del perro y muestra un widget; si OPENAI_API_KEY está en el servidor MCP, también llama a DALL-E 3 y muestra la URL. Opción texturePreset para alinear con mapas UV Blue Heeler.",
+    schema: portraitInput,
+    widget: {
+      name: "pet-portrait",
+      invoking: "Generando retrato…",
+      invoked: "Retrato listo",
+    },
+  },
+  async (input) => {
+    const prompt = buildPetPortraitPrompt({
+      name: input.name,
+      breed: input.breed,
+      age: input.age,
+      historial: input.historial,
+      visualStyle: input.visualStyle,
+      texturePreset: input.texturePreset,
+    });
+    const apiKey = process.env.OPENAI_API_KEY;
+    const gen = await generateOpenAiPetImage(prompt, apiKey);
+    const baseUrl = (process.env.MCP_URL || "http://localhost:3011").replace(
+      /\/$/,
+      "",
+    );
+    const referenceNote =
+      input.texturePreset === "australian-cattle-dog-blue-heeler"
+        ? "Preset: pelaje moteado tipo Blue Heeler / Australian Cattle Dog (tan marks, speckled blue-grey)."
+        : undefined;
+
+    const summaryParts = [
+      gen.url
+        ? "Imagen generada con DALL-E 3."
+        : gen.error ?? "Solo prompt (sin API key o error).",
+      `Prompt (${prompt.length} caracteres).`,
+    ];
+
+    return widget({
+      props: {
+        prompt,
+        imageUrl: gen.url,
+        petName: input.name,
+        breed: input.breed,
+        referenceNote,
+        generationError: gen.error && !gen.url ? gen.error : undefined,
+        assetsBaseUrl: baseUrl,
+      },
+      output: text(summaryParts.join(" ")),
     });
   },
 );

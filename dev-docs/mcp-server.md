@@ -29,6 +29,7 @@ Smoke-test prompts (sample data is baked into each widget — no setup needed):
 - "Tablero por estado." → `show-pet-status-board`
 - "Dashboard de salud." → `show-pet-health-dashboard` (KPIs + donut de estado + barras por vacuna)
 - "Borrador de nota para el expediente." → `show-vet-note-draft` (HITL; Send usa `post-vet-note-comment`, demo)
+- "Genera un retrato del perro / prompt para imagen." → `generate-pet-portrait` (widget + opcional DALL-E si `OPENAI_API_KEY` en el servidor MCP)
 
 ## Deploy to Manufact Cloud
 
